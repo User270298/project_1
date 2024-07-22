@@ -47,7 +47,7 @@ while True:
     try:
     # в 1 час 12 раз по 5 минут, 4 раза по 15 минут, 2 раза по 30 минут
     # Нужно каждые 61 бар делать статистику
-        for i in ["BTC-USDT-SWAP.csv", 'ETH-USDT-SWAP.csv', 'SOL-USDT-SWAP.csv']:
+        for i in ["BTC-USDT-SWAP.csv", 'ETH-USDT-SWAP.csv', 'SOL-USDT-SWAP.csv']: #, 'SOL-USDT-SWAP.csv'
             coin = i
             df = pd.read_csv(i)
             pd.options.display.max_rows = 2000
@@ -173,7 +173,8 @@ while True:
                            f'Percent size {percent_sz}\n'
                            f'Take profit {take}\n'
                            f'Coin {middle}\n'
-                           f'Stop loss {stop}')
+                           f'Stop loss {stop}\n'
+                           f'{result}')
 
             elif df["pattern_detected"].iloc[-1]==2 and (coin not in list_coins):
                 #Short
@@ -212,7 +213,8 @@ while True:
                            f'Percent size {percent_sz}\n'
                           f'Take profit {take}\n'
                           f'Coin {middle}\n'
-                          f'Stop loss {stop}')
+                          f'Stop loss {stop}\n'
+                          f'{result}')
 
         sleep(60)
     except Exception as e:

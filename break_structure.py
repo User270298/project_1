@@ -20,7 +20,7 @@ exchange = ccxt.okx()
 # df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
 # df.to_csv('BTC-USDT-SWAP.csv', index=False)
 
-df = pd.read_csv("proverka\\ETH-USDT-SWAP.csv")
+df = pd.read_csv("e1868b478e3987880e7c5f2bd65a3a6a\\BTC-USDT-SWAP.csv")
 df=df[df['volume']!=0]
 df=df[0:1000]
 # print(len(df))
@@ -43,7 +43,7 @@ def isSwing(candle, window):
         return swingLow
     else:
         return 0
-window=10
+window=5
 df['isSwing'] = df.apply(lambda x: isSwing(x.name,window), axis=1)
 
 def pointpos(x):
@@ -99,8 +99,8 @@ high = rslt_df_high['pointpos'].iloc[-1]
 low = rslt_df_low['pointpos'].iloc[-1]
 close = df['close'].iloc[-1]
 middle=(high+low)/2
-print(rslt_df_high)
-print(rslt_df_low)
+# print(rslt_df_high)
+# print(rslt_df_low)
 print(high)
 print(low)
 print(close)

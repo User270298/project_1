@@ -1,7 +1,7 @@
 import okx.Account as Account
 import okx.Trade as trade
 import pprint
-import datetime
+from datetime import datetime
 import requests
 from time import sleep
 
@@ -23,28 +23,80 @@ tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, False, flag)
 # result = tradeAPI.get_orders_history(
 #     instType="SWAP"
 # )
-risk=5
-foulder=20
 
-# percent_sz = ((risk / (foulder * ((close - stop) / close))) * 100) / close
-result = tradeAPI.place_order(
-                instId="ETH-USDT-SWAP",
-                tdMode="isolated",
-                side="buy",
-                posSide="long",
-                ordType="market",
-                sz=5.6,
-                # ccy='50',
-                tpTriggerPx='4000',  # take profit trigger price
-                tpOrdPx="-1",  # taker profit order price。When it is set to -1，the order will be placed as an market order
-                tpTriggerPxType="last",
-                slTriggerPx='3000',      # take profit trigger price
-                slOrdPx="-1",           # taker profit order price。When it is set to -1，the order will be placed as an market order
-                slTriggerPxType="last",
-                clOrdId='1',
-                # tgtCcy = "base_ccy"
-            )
-print(result)
+import okx.MarketData as MarketData
+flag = "1"  # live trading: 0, demo trading: 1
+market=MarketData.MarketAPI(flag=flag)
+res=market.get_tickers(instType='SWAP')
+pprint.pprint(res['data'][30])
+pprint.pprint(res['data'][37])
+# x = int(str(datetime.now())[17:19])
+# print(x)
+
+# with open("BTC-USDT-SWAP.csv", mode="a", encoding='utf-8') as w_file:
+#     file_writer = csv.writer(w_file, delimiter=",", lineterminator="\r")
+#     file_writer.writerow(["timestamp", "open", "high", "low", "close"])
+
+#BTC
+# while True:
+#     x = int(str(datetime.now())[14:16])
+#     # print(x)
+#     if x%time==0 : #and (str(x)[17:19]=='00' or str(x)[17:19]=='01')
+#         while True:
+#             try:
+#                 marketDataAPI = MarketData.MarketAPI(flag=flag)
+#                 result = marketDataAPI.get_tickers(instType="SWAP")
+#                 close=float(result['data'][12]['askPx'])
+#                 timeframe=datetime.fromtimestamp(float(result['data'][12]['ts'])/1000).strftime('%Y-%m-%d %H:%M:%S')
+#                 print(str(timeframe)[14:16], ':', str(timeframe)[17:19])
+#                 print(close)
+#                 list_close.append(close)
+#                 print(list_close)
+#                 if x+time==int(str(timeframe)[14:16]):
+#                     timeframe=(timeframe)
+#                     high=str(max(list_close))
+#                     low=str(min(list_close))
+#                     opened=str(list_close[0])
+#                     close=str(list_close[-1])
+#                     print(high, low, open, close)
+#                     print(type(high),type(low),type(opened),type(close))
+#                     print('Save to BTC-USDT-SWAP.csv')
+#                     with open("BTC-USDT-SWAP.csv", mode="a", encoding="utf-8") as w_file:
+#                         file_writer = csv.writer(w_file, delimiter=",", lineterminator="\r")
+#                         file_writer.writerow([timeframe, opened, high, low, close])
+#                     x=x+time
+#                     list_close.clear()
+#                 sleep(10)
+#             except Exception as e:
+#                 print(e)
+
+print(5%5==0)
+
+
+
+
+# risk=5
+# foulder=20
+#
+# # percent_sz = ((risk / (foulder * ((close - stop) / close))) * 100) / close
+# result = tradeAPI.place_order(
+#                 instId="ETH-USDT-SWAP",
+#                 tdMode="isolated",
+#                 side="buy",
+#                 posSide="long",
+#                 ordType="market",
+#                 sz=5.6,
+#                 # ccy='50',
+#                 tpTriggerPx='4000',  # take profit trigger price
+#                 tpOrdPx="-1",  # taker profit order price。When it is set to -1，the order will be placed as an market order
+#                 tpTriggerPxType="last",
+#                 slTriggerPx='3000',      # take profit trigger price
+#                 slOrdPx="-1",           # taker profit order price。When it is set to -1，the order will be placed as an market order
+#                 slTriggerPxType="last",
+#                 clOrdId='1',
+#                 # tgtCcy = "base_ccy"
+#             )
+# print(result)
 # result=accountAPI.get_positions()
 # list_coins=[]
 # if len(result['data'])!=0:
@@ -100,3 +152,4 @@ print(result)
 #         message = (f'{e}')
 #         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={message}"
 #         requests.get(url).json()
+print(00+5)
