@@ -20,8 +20,8 @@ exchange = ccxt.okx()
 # df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
 # df.to_csv('BTC-USDT-SWAP.csv', index=False)
 
-df = pd.read_csv("e1868b478e3987880e7c5f2bd65a3a6a\\BTC-USDT-SWAP.csv")
-df=df[df['volume']!=0]
+df = pd.read_csv("BTC-USDT-SWAP.csv")
+# df=df[df['volum']!=0]
 df=df[0:1000]
 # print(len(df))
 def isSwing(candle, window):

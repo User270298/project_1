@@ -42,6 +42,8 @@ res_2_long=0
 res_2_short=0
 res_3_long=0
 res_3_short=0
+res_4_long=0
+res_4_short=0
 
 while True:
     try:
@@ -52,7 +54,6 @@ while True:
             df = pd.read_csv(i)
             pd.options.display.max_rows = 2000
             pd.set_option('display.max_rows', None)
-
             def isSwing(candle, window):
                 if candle - window < 0 or candle + window >= len(df):
                     return 0
@@ -129,7 +130,6 @@ while True:
             elif coin=='SOL-USDT-SWAP':
                 deliver=10
                 cancel(res_3_long, res_3_short)
-            print(f'Coin: {coin}')
 
             result = tradeAPI.get_order_list()
             list_coins = []
@@ -158,7 +158,7 @@ while True:
                     side="buy",
                     posSide="long",
                     ordType="limit",
-                    sz=percent_sz,
+                    sz=percent_sz*20,
                     px=middle,
                     tpTriggerPx=take,  # take profit trigger price
                     tpOrdPx="-1",  # taker profit order price。When it is set to -1，the order will be placed as an market order
@@ -198,7 +198,7 @@ while True:
                     side="sell",
                     posSide="short",
                     ordType="limit",
-                    sz=percent_sz,
+                    sz=percent_sz*20,
                     px=middle,
                     tpTriggerPx=take,  # take profit trigger price
                     tpOrdPx="-1",  # taker profit order price。When it is set to -1，the order will be placed as an market order

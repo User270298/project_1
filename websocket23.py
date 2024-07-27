@@ -158,12 +158,12 @@ def message(e):
 # # #{'topic': 'kline.1.ETHUSDT', 'data': [{'start': 1714474440000, 'end': 1714474499999, 'interval': '1', 'open': '303
 # # 8.14', 'close': '3037.13', 'high': '3038.14', 'low': '3036.35', 'volume': '220.56', 'turnover': '669809.5108', 'confirm': False, 'timestamp': 1714474460602}], 'ts': 1714474460602, 'type': 'snapshot'}
 
-time=5
+my_timeframe=5
 
-def websocket(coin:str,time:int,num:int ):
+def websocket(coin:str,my_timeframe:int,num:int ):
     while True:
-        if int(str(datetime.now())[14:16]) % time == 0:
-            x=int(str(datetime.now())[14:16])
+        if int(str(datetime.now())[14:16]) % my_timeframe == 0:
+            x=int(str(datetime.now())[14:16])+my_timeframe
             list_close = []
             while True:
                 try:
@@ -172,9 +172,19 @@ def websocket(coin:str,time:int,num:int ):
                     close = float(result['data'][num]['askPx'])
                     timeframe = datetime.fromtimestamp(float(result['data'][12]['ts']) / 1000).strftime('%Y-%m-%d %H:%M:%S')
                     list_close.append(close)
-                    print(close)
-                    if x + time == int(str(timeframe)[14:16]) or x + time == int(str(timeframe)[15:16]):
-                        timeframe = (timeframe)
+                    # print(f'{x + time} == {int(str(timeframe)[14:16])}')
+                    # print(f'X 1: {x}')
+                    # print(f'X+my_timeframe: {x+my_timeframe}')
+                    times=int(str(timeframe)[14:16])
+                    if str(times) == '05':
+                        times=5
+                    elif str(times)=='00':
+                        times=0
+                    # print(list_close)
+                    if times%my_timeframe==0:
+                        x += 5
+                        # print(f'X 2: {x}')
+                        timeframe = str(timeframe)
                         high = str(max(list_close))
                         low = str(min(list_close))
                         opened = str(list_close[0])
@@ -183,16 +193,16 @@ def websocket(coin:str,time:int,num:int ):
                         with open(coin, mode="a", encoding="utf-8") as w_file:
                             file_writer = csv.writer(w_file, delimiter=",", lineterminator="\r")
                             file_writer.writerow([timeframe, opened, high, low, close])
-                        x = x + time
                         list_close.clear()
-                    sleep(10)
+                        sleep(60)
+                    sleep(5)
                 except Exception as e:
                     print(e)
                     message(e)
-
-threading.Thread(target=websocket, args=("BTC-USDT-SWAP.csv", time , 12, )).start()
-threading.Thread(target=websocket, args=("ETH-USDT-SWAP.csv", time , 37, )).start()
-# threading.Thread(target=websocket, args=("SOL-USDT-SWAP.csv", time , 30, )).start()
+threading.Thread(target=websocket, args=("BTC-USDT-SWAP.csv", my_timeframe , 12,)).start()
+threading.Thread(target=websocket, args=("ETH-USDT-SWAP.csv", my_timeframe , 37,)).start()
+threading.Thread(target=websocket, args=("SOL-USDT-SWAP.csv", my_timeframe , 30, )).start()
+# threading.Thread(target=websocket, args=("SOL-USDT-SWAP.csv", my_timeframe , 30, )).start()
 
 # while True:
 #     x = int(str(datetime.now())[14:16])

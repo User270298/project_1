@@ -28,8 +28,9 @@ import okx.MarketData as MarketData
 flag = "1"  # live trading: 0, demo trading: 1
 market=MarketData.MarketAPI(flag=flag)
 res=market.get_tickers(instType='SWAP')
-pprint.pprint(res['data'][30])
-pprint.pprint(res['data'][37])
+for i in range(len(res['data'])):
+    print(res['data'][i]['instId'])
+# pprint.pprint(res['data'][37])
 # x = int(str(datetime.now())[17:19])
 # print(x)
 
@@ -70,7 +71,7 @@ pprint.pprint(res['data'][37])
 #             except Exception as e:
 #                 print(e)
 
-print(5%5==0)
+# print(5%5==0)
 
 
 
@@ -152,4 +153,4 @@ print(5%5==0)
 #         message = (f'{e}')
 #         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={message}"
 #         requests.get(url).json()
-print(00+5)
+# print(int(05)%5==0)
