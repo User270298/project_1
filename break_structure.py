@@ -106,7 +106,7 @@ print(low)
 print(close)
 print(middle)
 # #BACKTEST
-# df = df.rename({'timestamp':'Local time','open': 'Open', 'high': 'High', 'low': 'Low', 'close': 'Close', 'volume': 'Volume'}, axis=1)
+# df = df.rename({'timestamp':'Local time','open': 'Open', 'high': 'High', 'low': 'Low', 'close': 'Close'}, axis=1)
 # # df.index = pd.DatetimeIndex(df['Local time'])
 # # print(df)
 #
@@ -198,4 +198,4 @@ print(middle)
 # stats=bt.run()
 # print(stats)
 # bt.plot()
-
+#

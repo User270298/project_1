@@ -24,12 +24,12 @@ tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, False, flag)
 #     instType="SWAP"
 # )
 
-import okx.MarketData as MarketData
-flag = "1"  # live trading: 0, demo trading: 1
-market=MarketData.MarketAPI(flag=flag)
-res=market.get_tickers(instType='SWAP')
-for i in range(len(res['data'])):
-    print(res['data'][i]['instId'])
+# import okx.MarketData as MarketData
+# flag = "1"  # live trading: 0, demo trading: 1
+# market=MarketData.MarketAPI(flag=flag)
+# res=market.get_tickers(instType='SWAP')
+# for i in range(len(res['data'])):
+#     print(res['data'][i]['instId'])
 # pprint.pprint(res['data'][37])
 # x = int(str(datetime.now())[17:19])
 # print(x)
@@ -154,3 +154,28 @@ for i in range(len(res['data'])):
 #         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={message}"
 #         requests.get(url).json()
 # print(int(05)%5==0)
+
+
+result = tradeAPI.get_orders_history(
+    instType="SWAP"
+)
+# pprint.pprint(result)
+# date_extreme=datetime.datetime.fromtimestamp(int(result['data'][0]['fillTime'])/1000)
+# print(date_extreme)
+# date_extreme=str(date_extreme)[:10]
+count_plus=0
+count_minus=0
+res_pnl=0
+# pprint.pprint(result['data'])
+for i in  result['data']:
+    if i['pnl']!='0':
+        # print(i)
+        res_pnl+=float(i['pnl'])
+        if float(i['pnl'])>0:
+            count_plus+=1
+        if float(i['pnl'])<0:
+            count_minus+=1
+print(f'Суммарный pnl за неделю: {round(res_pnl, 2)} USDT\n')
+print(f'Win rate за неделю: {round((count_plus /(count_plus+count_minus))*100, 0)} %\n')
+print(f'Plus: {count_plus}\n'
+      f'Minus: {count_minus}')

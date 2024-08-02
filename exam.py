@@ -107,36 +107,49 @@ while True:
             # print(df['close'].iloc[-1])
             coin=coin[:-4]
 
-            def cancel(x,y):
+            def cancel(x,y, clOrd_long, clOrd_short):
                 if df["pattern_detected"].iloc[-1] == 0:
                     x = 0
                     y = 0
+                    print(f'Cancel 0: {x, y}')
                 if df["pattern_detected"].iloc[-1] == 1:
                     x += 1
-                    if x == 7:
-                        result = tradeAPI.cancel_order(instId=coin, clOrdId='77')
+                    print(f'Cancel 1: {x}')
+                    if x == 5:
+                        x=0
+                        result = tradeAPI.cancel_order(instId=coin, clOrdId=clOrd_long)
                         print(result)
+                        message(f'Cancel: {result}')
                 if df["pattern_detected"].iloc[-1] == 2:
                     y += 1
-                    if y == 7:
-                        result = tradeAPI.cancel_order(instId=coin, clOrdId='88')
+                    print(f'Cancel 2: {y}')
+                    if y == 5:
+                        y=0
+                        result = tradeAPI.cancel_order(instId=coin, clOrdId=clOrd_short)
                         print(result)
+                        message(f'Cancel: {result}')
             if coin=='BTC-USDT-SWAP':
                 deliver=1000
-                cancel(res_1_long, res_1_short)
+                clOrd_long = 11
+                clOrd_short=12
+                cancel(res_1_long, res_1_short, clOrd_long, clOrd_short)
             elif coin=='ETH-USDT-SWAP':
                 deliver=100
-                cancel(res_2_long, res_2_short)
+                clOrd_long = 21
+                clOrd_short = 22
+                cancel(res_2_long, res_2_short, clOrd_long, clOrd_short)
             elif coin=='SOL-USDT-SWAP':
                 deliver=10
-                cancel(res_3_long, res_3_short)
+                clOrd_long = 31
+                clOrd_short = 32
+                cancel(res_3_long, res_3_short, clOrd_long, clOrd_short)
 
             result = tradeAPI.get_order_list()
             list_coins = []
             for i in range(len(result['data'])):
                 res = result['data'][i]['instId']
                 list_coins.append(res)
-
+            print(f'List coins: {list_coins}')
             if df["pattern_detected"].iloc[-1]==1 and (coin not in list_coins):
                 #Long
                 rslt_df_high = df[df['isSwing'] == 1]
@@ -147,7 +160,7 @@ while True:
                 middle = (high + low) / 2
                 stop=low*0.9996
                 take = ((middle-stop)*2.5)+middle
-                percent_sz = round(((risk / (((middle - stop) / stop))) * deliver) / middle, 1)
+                percent_sz = ((risk / (((middle - stop) / stop))) * deliver) / middle
                 print('------------LONG-------------')
                 print(f'Take {take}')
                 print(f'Coin {middle}')
@@ -158,7 +171,7 @@ while True:
                     side="buy",
                     posSide="long",
                     ordType="limit",
-                    sz=percent_sz*20,
+                    sz=round(percent_sz, 1),
                     px=middle,
                     tpTriggerPx=take,  # take profit trigger price
                     tpOrdPx="-1",  # taker profit order price。When it is set to -1，the order will be placed as an market order
@@ -166,7 +179,7 @@ while True:
                     slTriggerPx=stop,      # take profit trigger price
                     slOrdPx="-1",           # taker profit order price。When it is set to -1，the order will be placed as an market order
                     slTriggerPxType="last",
-                    clOrdId='77'
+                    clOrdId=str(clOrd_long)
                 )
                 message(f'------LONG------- \n'
                            f'coin: {coin}\n'
@@ -174,7 +187,9 @@ while True:
                            f'Take profit {take}\n'
                            f'Coin {middle}\n'
                            f'Stop loss {stop}\n'
-                           f'{result}')
+                           f'{result}\n'
+                           f'{list_coins}\n'
+                           )
 
             elif df["pattern_detected"].iloc[-1]==2 and (coin not in list_coins):
                 #Short
@@ -186,7 +201,7 @@ while True:
                 middle = (high + low) / 2
                 stop = high * 1.0004
                 take = middle-((stop - middle) * 2.5)
-                percent_sz = round(((risk / (((stop - middle) / middle))) * deliver) / middle, 1)
+                percent_sz = ((risk / (((stop - middle) / middle))) * deliver) / middle
 
                 print('------------SHORT-------------')
                 print(f'Stop {stop}')
@@ -198,7 +213,7 @@ while True:
                     side="sell",
                     posSide="short",
                     ordType="limit",
-                    sz=percent_sz*20,
+                    sz=round(percent_sz, 1),
                     px=middle,
                     tpTriggerPx=take,  # take profit trigger price
                     tpOrdPx="-1",  # taker profit order price。When it is set to -1，the order will be placed as an market order
@@ -206,15 +221,15 @@ while True:
                     slTriggerPx=stop,      # take profit trigger price
                     slOrdPx="-1",           # taker profit order price。When it is set to -1，the order will be placed as an market order
                     slTriggerPxType="last",
-                    clOrdId='88'
+                    clOrdId=str(clOrd_short)
                 )
                 message(f'------SHORT------- \n'
                            f'Coin: {coin}\n'
                            f'Percent size {percent_sz}\n'
                           f'Take profit {take}\n'
                           f'Coin {middle}\n'
-                          f'Stop loss {stop}\n'
-                          f'{result}')
+                          f'{result}\n'
+                           f'{list_coins}\n')
 
         sleep(60)
     except Exception as e:
