@@ -1,236 +1,504 @@
+# import okx.Account as Account
+# import okx.Trade as trade
+# import pprint
+# import requests
+# import datetime
+# from time import sleep
+# import pandas as pd
+# import numpy as np
+#
+# # telegram
+# TOKEN = '6959314930:AAHnekjhCc2d_CHFLxE9hFWAZuIgQMD8wzY'
+# chat_id = '947159905'
+#
+#
+# def message(x):
+#     message = (f'{x}')
+#     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={message}"
+#     requests.get(url).json()
+#
+#
+# # live trading: 0, demo trading: 1
+# # OKX demo trading
+# # api_key='43f5df59-5e61-4d24-875e-f32c003e0430'
+# # secret_key='5B1063B322635A27CF01BACE3772E0E0'
+# # passphrase='Parkwood270298)'
+# # flag = "1"
+#
+# # OKX live trading
+# api_key = 'f8bcadcc-bed3-4fca-96e7-4f314f43136b'
+# secret_key = 'F56CF3942B876FDEDEF547C90B04F206'
+# passphrase = 'Parkwood270298)'
+# flag = "0"
+#
+# accountAPI = Account.AccountAPI(api_key, secret_key, passphrase, False, flag)
+# tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, False, flag)
+# # -------------------------------------------------
+# count_long = 0
+# count_short = 0
+# ordId = 0
+# risk = 20
+# foulder = 20
+#
+# pattern_by_long_op=0
+# pattern_by_long_ltc=0
+# pattern_by_short_op = 0
+# pattern_by_short_ltc= 0
+# clord_long=''
+# clord_short=''
+# while True:
+#     try:
+#         # в 1 час 12 раз по 5 минут, 4 раза по 15 минут, 2 раза по 30 минут
+#         # Нужно каждые 61 бар делать статистику
+#         for i in [ 'LTC-USDT-SWAP.csv', 'OP-USDT-SWAP.csv']:  # , 'SOL-USDT-SWAP.csv'
+#             coin = i
+#             df = pd.read_csv(i)
+#             pd.options.display.max_rows = 2000
+#             pd.set_option('display.max_rows', None)
+#
+#
+#             def isSwing(candle, window):
+#                 if candle - window < 0 or candle + window >= len(df):
+#                     return 0
+#                 # print(candle, window)
+#                 swingHigh = 1
+#                 swingLow = 2
+#                 for i in range(candle - window, candle + window + 1):
+#                     if df.iloc[candle].low > df.iloc[i].low:
+#                         swingLow = 0
+#                     if df.iloc[candle].high < df.iloc[i].high:
+#                         swingHigh = 0
+#                 if (swingHigh and swingLow):
+#                     return 3
+#                 elif swingHigh:
+#                     return swingHigh
+#                 elif swingLow:
+#                     return swingLow
+#                 else:
+#                     return 0
+#
+#
+#             window = 10
+#             df['isSwing'] = df.apply(lambda x: isSwing(x.name, window), axis=1)
+#
+#
+#             def pointpos(x):
+#                 if x['isSwing'] == 2:
+#                     return x['low']
+#                 elif x['isSwing'] == 1:
+#                     return x['high']
+#                 else:
+#                     return np.nan
+#
+#
+#             df['pointpos'] = df.apply(lambda row: pointpos(row), axis=1)
+#
+#
+#             def detect_structure(candle, backcandles, window):
+#                 localdf = df.iloc[
+#                           candle - backcandles - window:candle - window]  # window must be greater than pivot window to avoid look ahead bias
+#                 highs = localdf[localdf['isSwing'] == 1].high.tail(2).values
+#                 lows = localdf[localdf['isSwing'] == 2].low.tail(2).values
+#                 levelbreak = 0
+#                 zone_width = 0.001
+#                 if len(highs) == 2:  # long
+#                     resistance_condition = True
+#                     mean_high = highs.mean()
+#                     if resistance_condition and (df.loc[candle].close - mean_high) > zone_width * 2:
+#                         levelbreak = 1
+#                 if len(lows) == 2:  # short
+#                     support_condition = True
+#                     mean_low = lows.mean()
+#                     if support_condition and (mean_low - df.loc[candle].close) > zone_width * 2:
+#                         levelbreak = 2
+#                 return levelbreak
+#
+#
+#             df['pattern_detected'] = df.apply(lambda row: detect_structure(row.name, backcandles=60, window=9), axis=1)
+#             # print(df.tail(2))
+#             print(df["pattern_detected"].iloc[-1])
+#             # print(df['close'].iloc[-1])
+#             coin = coin[:-4]
+#
+#
+#             if coin == 'OP-USDT-SWAP':
+#                 deliver = 1
+#             elif coin == 'LTC-USDT-SWAP':
+#                 deliver = 1
+#
+#             result = accountAPI.get_positions()
+#             list_coins = []
+#             for i in range(len(result['data'])):
+#                 res = result['data'][i]['instId']
+#                 list_coins.append(res)
+#             print(f'List coins: {list_coins}')
+#             if df["pattern_detected"].iloc[-1] == 1 and (coin not in list_coins):
+#                 # Long
+#                 rslt_df_high = df[df['isSwing'] == 1]
+#                 rslt_df_low = (df[df['isSwing'] == 2])
+#                 high = rslt_df_high['pointpos'].iloc[-1]
+#                 low = rslt_df_low['pointpos'].iloc[-1]
+#                 close = df['close'].iloc[-1]
+#                 # middle = (high + low) / 2
+#                 stop = low * 0.9996
+#                 take = ((close - stop) * 3) + close
+#                 percent_sz = round(((risk / ((close - stop) / stop)) * deliver) / close, 1)
+#                 if coin == 'OP-USDT-SWAP':
+#                     pattern_by_long_op=((close - stop)) + close
+#                     op_close_long=close
+#                     clord_long='11'
+#                 elif coin == 'LTC-USDT-SWAP':
+#                     pattern_by_long_ltc=((close - stop)) + close
+#                     ltc_close_long=close
+#                     clord_long = '12'
+#                 print('------------LONG-------------')
+#                 print(f'Take {take}')
+#                 print(f'Coin {close}')
+#                 print(f'Stop {stop}')
+#                 result = tradeAPI.place_order(
+#                     instId=coin,
+#                     tdMode="isolated",
+#                     side="buy",
+#                     posSide="long",
+#                     ordType="market",
+#                     sz=percent_sz,
+#                     # px=middle,
+#                     tpTriggerPx=float(take),  # take profit trigger price
+#                     tpOrdPx="-1",
+#                     # taker profit order price。When it is set to -1，the order will be placed as an market order
+#                     tpTriggerPxType="last",
+#                     slTriggerPx=float(stop),  # take profit trigger price
+#                     slOrdPx="-1",
+#                     # taker profit order price。When it is set to -1，the order will be placed as an market order
+#                     slTriggerPxType="last",
+#                     clOrdId=clord_long
+#                 )
+#                 message(f'------LONG------- \n'
+#                         f'coin: {coin}\n'
+#                         f'Percent size {percent_sz}\n'
+#                         f'Take profit {take}\n'
+#                         f'Coin {close}\n'
+#                         f'Stop loss {stop}\n'
+#                         f'{result}\n'
+#                         f'{list_coins}\n'
+#                         )
+#
+#             elif df["pattern_detected"].iloc[-1] == 2 and (coin not in list_coins):
+#                 # Short
+#                 rslt_df_high = df[df['isSwing'] == 1]
+#                 rslt_df_low = (df[df['isSwing'] == 2])
+#                 high = rslt_df_high['pointpos'].iloc[-1]
+#                 low = rslt_df_low['pointpos'].iloc[-1]
+#                 close = df['close'].iloc[-1]
+#                 # middle = (high + low) / 2
+#                 stop = high * 1.0004
+#                 take = close - ((stop - close) * 3)
+#                 percent_sz = round(((risk / ((stop - close) / close)) * deliver) / close, 1)
+#
+#                 if coin == 'OP-USDT-SWAP':
+#                     pattern_by_short_op = close - ((stop - close) )
+#                     op_close_short=close
+#                     clord_short = '21'
+#                 elif coin == 'LTC-USDT-SWAP':
+#                     pattern_by_short_ltc= close - ((stop - close) )
+#                     ltc_close_short = close
+#                     clord_short = '22'
+#                 print('------------SHORT-------------')
+#                 print(f'Stop {stop}')
+#                 print(f'Coin {close}')
+#                 print(f'Take {take}')
+#                 result = tradeAPI.place_order(
+#                     instId=coin,
+#                     tdMode="isolated",
+#                     side="sell",
+#                     posSide="short",
+#                     ordType="market",
+#                     sz=percent_sz,
+#                     # px=middle,
+#                     tpTriggerPx=float(take),  # take profit trigger price
+#                     tpOrdPx="-1",
+#                     # taker profit order price。When it is set to -1，the order will be placed as an market order
+#                     tpTriggerPxType="last",
+#                     slTriggerPx=float(stop),  # take profit trigger price
+#                     slOrdPx="-1",
+#                     # taker profit order price。When it is set to -1，the order will be placed as an market order
+#                     slTriggerPxType="last",
+#                     clOrdId=clord_short
+#                 )
+#                 message(f'------SHORT------- \n'
+#                         f'Coin: {coin}\n'
+#                         f'Percent size {percent_sz}\n'
+#                         f'Take profit {take}\n'
+#                         f'Coin {close}\n'
+#                         f'Stop loss {stop}\n'
+#                         f'{result}\n'
+#                         f'{list_coins}\n')
+#             close = df['close'].iloc[-1]
+#             if close==pattern_by_long_op:
+#                 result = tradeAPI.amend_order(
+#                 instId=coin,
+#                 newTpTriggerPxType=op_close_long,
+#                     clOrdId=clord_long
+#                 )
+#             elif close==pattern_by_long_ltc:
+#                 result = tradeAPI.amend_order(
+#                 instId=coin,
+#                 newTpTriggerPxType=ltc_close_long,
+#                     clOrdId=clord_long
+#                 )
+#             elif close==pattern_by_short_op:
+#                 result = tradeAPI.amend_order(
+#                     instId=coin,
+#                     newTpTriggerPxType=op_close_short,
+#                     clOrdId=clord_short
+#                 )
+#             elif close==pattern_by_short_ltc:
+#                 result = tradeAPI.amend_order(
+#                     instId=coin,
+#                     newTpTriggerPxType=ltc_close_short,
+#                     clOrdId=clord_short
+#                 )
+#
+#         sleep(60)
+#     except Exception as e:
+#         message(f'Exam: {e}')
+
+
+
+
 import okx.Account as Account
 import okx.Trade as trade
 import pprint
 import requests
 import datetime
+import logging
 from time import sleep
 import pandas as pd
 import numpy as np
 
-#telegram
-TOKEN = '6959314930:AAHnekjhCc2d_CHFLxE9hFWAZuIgQMD8wzY'
-chat_id='947159905'
-def message(x):
-    message = (f'{x}')
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={message}"
-    requests.get(url).json()
+# Настройка логирования
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# live trading: 0, demo trading: 1
-#OKX demo trading
-api_key='43f5df59-5e61-4d24-875e-f32c003e0430'
-secret_key='5B1063B322635A27CF01BACE3772E0E0'
-passphrase='Parkwood270298)'
-flag = "1"
+# Telegram
+TOKEN = 'Ваш токен'
+chat_id = 'Ваш chat_id'
 
-#OKX live trading
-# api_key='f8bcadcc-bed3-4fca-96e7-4f314f43136b'
-# secret_key='F56CF3942B876FDEDEF547C90B04F206'
-# passphrase='Parkwood270298)'
-# flag = "0"
 
-accountAPI = Account.AccountAPI(api_key, secret_key, passphrase, False, flag)
-tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, False, flag)
-#-------------------------------------------------
-count_long=0
-count_short=0
-ordId=0
-risk=2
-foulder=20
-res_1_long=0
-res_1_short=0
-res_2_long=0
-res_2_short=0
-res_3_long=0
-res_3_short=0
-res_4_long=0
-res_4_short=0
-
-while True:
+def send_message(text):
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={text}"
     try:
-    # в 1 час 12 раз по 5 минут, 4 раза по 15 минут, 2 раза по 30 минут
-    # Нужно каждые 61 бар делать статистику
-        for i in ["BTC-USDT-SWAP.csv", 'ETH-USDT-SWAP.csv', 'SOL-USDT-SWAP.csv']: #, 'SOL-USDT-SWAP.csv'
-            coin = i
-            df = pd.read_csv(i)
-            pd.options.display.max_rows = 2000
-            pd.set_option('display.max_rows', None)
-            def isSwing(candle, window):
-                if candle - window < 0 or candle + window >= len(df):
-                    return 0
-                # print(candle, window)
-                swingHigh = 1
-                swingLow = 2
-                for i in range(candle - window, candle + window + 1):
-                    if df.iloc[candle].low > df.iloc[i].low:
-                        swingLow = 0
-                    if df.iloc[candle].high < df.iloc[i].high:
-                        swingHigh = 0
-                if (swingHigh and swingLow):
-                    return 3
-                elif swingHigh:
-                    return swingHigh
-                elif swingLow:
-                    return swingLow
-                else:
-                    return 0
-            window = 10
-            df['isSwing'] = df.apply(lambda x: isSwing(x.name, window), axis=1)
-            def pointpos(x):
-                if x['isSwing'] == 2:
-                    return x['low']
-                elif x['isSwing'] == 1:
-                    return x['high']
-                else:
-                    return np.nan
-            df['pointpos'] = df.apply(lambda row: pointpos(row), axis=1)
-            def detect_structure(candle, backcandles, window):
-                localdf = df.iloc[
-                          candle - backcandles - window:candle - window]  # window must be greater than pivot window to avoid look ahead bias
-                highs = localdf[localdf['isSwing'] == 1].high.tail(2).values
-                lows = localdf[localdf['isSwing'] == 2].low.tail(2).values
-                levelbreak = 0
-                zone_width = 0.001
-                if len(highs) == 2:  # long
-                    resistance_condition = True
-                    mean_high = highs.mean()
-                    if resistance_condition and (df.loc[candle].close - mean_high) > zone_width * 2:
-                        levelbreak = 1
-                if len(lows) == 2:  # short
-                    support_condition = True
-                    mean_low = lows.mean()
-                    if support_condition and (mean_low - df.loc[candle].close) > zone_width * 2:
-                        levelbreak = 2
-                return levelbreak
-            df['pattern_detected'] = df.apply(lambda row: detect_structure(row.name, backcandles=60, window=9), axis=1)
-            # print(df.tail(2))
-            print(df["pattern_detected"].iloc[-1])
-            # print(df['close'].iloc[-1])
-            coin=coin[:-4]
+        requests.get(url)
+    except requests.RequestException as e:
+        logging.error(f"Failed to send message: {e}")
 
-            def cancel(x,y, clOrd_long, clOrd_short):
-                if df["pattern_detected"].iloc[-1] == 0:
-                    x = 0
-                    y = 0
-                    print(f'Cancel 0: {x, y}')
-                if df["pattern_detected"].iloc[-1] == 1:
-                    x += 1
-                    print(f'Cancel 1: {x}')
-                    if x == 5:
-                        x=0
-                        result = tradeAPI.cancel_order(instId=coin, clOrdId=clOrd_long)
-                        print(result)
-                        message(f'Cancel: {result}')
-                if df["pattern_detected"].iloc[-1] == 2:
-                    y += 1
-                    print(f'Cancel 2: {y}')
-                    if y == 5:
-                        y=0
-                        result = tradeAPI.cancel_order(instId=coin, clOrdId=clOrd_short)
-                        print(result)
-                        message(f'Cancel: {result}')
-            if coin=='BTC-USDT-SWAP':
-                deliver=1000
-                clOrd_long = 11
-                clOrd_short=12
-                cancel(res_1_long, res_1_short, clOrd_long, clOrd_short)
-            elif coin=='ETH-USDT-SWAP':
-                deliver=100
-                clOrd_long = 21
-                clOrd_short = 22
-                cancel(res_2_long, res_2_short, clOrd_long, clOrd_short)
-            elif coin=='SOL-USDT-SWAP':
-                deliver=10
-                clOrd_long = 31
-                clOrd_short = 32
-                cancel(res_3_long, res_3_short, clOrd_long, clOrd_short)
 
-            result = tradeAPI.get_order_list()
-            list_coins = []
-            for i in range(len(result['data'])):
-                res = result['data'][i]['instId']
-                list_coins.append(res)
-            print(f'List coins: {list_coins}')
-            if df["pattern_detected"].iloc[-1]==1 and (coin not in list_coins):
-                #Long
-                rslt_df_high = df[df['isSwing'] == 1]
-                rslt_df_low = (df[df['isSwing'] == 2])
-                high = rslt_df_high['pointpos'].iloc[-1]
-                low = rslt_df_low['pointpos'].iloc[-1]
-                close = df['close'].iloc[-1]
-                middle = (high + low) / 2
-                stop=low*0.9996
-                take = ((middle-stop)*2.5)+middle
-                percent_sz = ((risk / (((middle - stop) / stop))) * deliver) / middle
-                print('------------LONG-------------')
-                print(f'Take {take}')
-                print(f'Coin {middle}')
-                print(f'Stop {stop}')
-                result = tradeAPI.place_order(
-                    instId=coin,
-                    tdMode="isolated",
-                    side="buy",
-                    posSide="long",
-                    ordType="limit",
-                    sz=round(percent_sz, 1),
-                    px=middle,
-                    tpTriggerPx=take,  # take profit trigger price
-                    tpOrdPx="-1",  # taker profit order price。When it is set to -1，the order will be placed as an market order
-                    tpTriggerPxType="last",
-                    slTriggerPx=stop,      # take profit trigger price
-                    slOrdPx="-1",           # taker profit order price。When it is set to -1，the order will be placed as an market order
-                    slTriggerPxType="last",
-                    clOrdId=str(clOrd_long)
-                )
-                message(f'------LONG------- \n'
-                           f'coin: {coin}\n'
-                           f'Percent size {percent_sz}\n'
-                           f'Take profit {take}\n'
-                           f'Coin {middle}\n'
-                           f'Stop loss {stop}\n'
-                           f'{result}\n'
-                           f'{list_coins}\n'
-                           )
+def is_swing(candle, window, df):
+    if candle - window < 0 or candle + window >= len(df):
+        return 0
+    swing_high = all(df.iloc[candle].high >= df.iloc[i].high for i in range(candle - window, candle + window + 1))
+    swing_low = all(df.iloc[candle].low <= df.iloc[i].low for i in range(candle - window, candle + window + 1))
+    return 1 if swing_high else (2 if swing_low else 0)
 
-            elif df["pattern_detected"].iloc[-1]==2 and (coin not in list_coins):
-                #Short
-                rslt_df_high = df[df['isSwing'] == 1]
-                rslt_df_low = (df[df['isSwing'] == 2])
-                high = rslt_df_high['pointpos'].iloc[-1]
-                low = rslt_df_low['pointpos'].iloc[-1]
-                close = df['close'].iloc[-1]
-                middle = (high + low) / 2
-                stop = high * 1.0004
-                take = middle-((stop - middle) * 2.5)
-                percent_sz = ((risk / (((stop - middle) / middle))) * deliver) / middle
 
-                print('------------SHORT-------------')
-                print(f'Stop {stop}')
-                print(f'Coin {middle}')
-                print(f'Take {take}')
-                result = tradeAPI.place_order(
-                    instId=coin,
-                    tdMode="isolated",
-                    side="sell",
-                    posSide="short",
-                    ordType="limit",
-                    sz=round(percent_sz, 1),
-                    px=middle,
-                    tpTriggerPx=take,  # take profit trigger price
-                    tpOrdPx="-1",  # taker profit order price。When it is set to -1，the order will be placed as an market order
-                    tpTriggerPxType="last",
-                    slTriggerPx=stop,      # take profit trigger price
-                    slOrdPx="-1",           # taker profit order price。When it is set to -1，the order will be placed as an market order
-                    slTriggerPxType="last",
-                    clOrdId=str(clOrd_short)
-                )
-                message(f'------SHORT------- \n'
-                           f'Coin: {coin}\n'
-                           f'Percent size {percent_sz}\n'
-                          f'Take profit {take}\n'
-                          f'Coin {middle}\n'
-                          f'{result}\n'
-                           f'{list_coins}\n')
+def pointpos(row):
+    return row['low'] if row['isSwing'] == 2 else (row['high'] if row['isSwing'] == 1 else np.nan)
 
-        sleep(60)
-    except Exception as e:
-        message(f'{e}')
+
+def detect_structure(candle, df, backcandles=60, window=9):
+    localdf = df.iloc[candle - backcandles - window:candle - window]
+    highs = localdf[localdf['isSwing'] == 1].high.tail(2).values
+    lows = localdf[localdf['isSwing'] == 2].low.tail(2).values
+    zone_width = 0.001
+    if len(highs) == 2 and df.loc[candle].close - highs.mean() > zone_width * 2:
+        return 1
+    if len(lows) == 2 and lows.mean() - df.loc[candle].close > zone_width * 2:
+        return 2
+    return 0
+
+
+def process_coin(coin, accountAPI, tradeAPI, list_coins, risk=20, deliver=1):
+    df = pd.read_csv(coin)
+    window = 10
+    df['isSwing'] = df.apply(lambda x: is_swing(x.name, window, df), axis=1)
+    df['pointpos'] = df.apply(pointpos, axis=1)
+    df['pattern_detected'] = df.apply(lambda x: detect_structure(x.name, df), axis=1)
+
+    latest_pattern = df["pattern_detected"].iloc[-1]
+    if latest_pattern in [1, 2] and coin not in list_coins:
+        handle_trade_signal(coin, df, latest_pattern, accountAPI, tradeAPI, risk, deliver)
+
+
+def handle_trade_signal(coin, df, pattern, accountAPI, tradeAPI, risk, deliver):
+    rslt_df_high = df[df['isSwing'] == 1]
+    rslt_df_low = df[df['isSwing'] == 2]
+    high = rslt_df_high['pointpos'].iloc[-1]
+    low = rslt_df_low['pointpos'].iloc[-1]
+    close = df['close'].iloc[-1]
+
+    stop = low * 0.9996 if pattern == 1 else high * 1.0004
+    take = ((close - stop) * 3) + close if pattern == 1 else close - ((stop - close) * 3)
+    percent_sz = round(((risk / ((close - stop) / stop)) * deliver) / close, 1)
+
+    side = "buy" if pattern == 1 else "sell"
+    pos_side = "long" if pattern == 1 else "short"
+    order_id = f'{pos_side[:1].upper()}{coin[:2].upper()}'
+
+    logging.info(f'Placing {pos_side} order for {coin}: size {percent_sz}, stop {stop}, take {take}')
+    result = tradeAPI.place_order(
+        instId=coin,
+        tdMode="isolated",
+        side=side,
+        posSide=pos_side,
+        ordType="market",
+        sz=percent_sz,
+        tpTriggerPx=float(take),
+        tpOrdPx="-1",
+        tpTriggerPxType="last",
+        slTriggerPx=float(stop),
+        slOrdPx="-1",
+        slTriggerPxType="last",
+        clOrdId=order_id
+    )
+
+    send_message(f'------{pos_side.upper()}------- \n'
+                 f'coin: {coin}\n'
+                 f'Percent size {percent_sz}\n'
+                 f'Take profit {take}\n'
+                 f'Coin {close}\n'
+                 f'Stop loss {stop}\n'
+                 f'{result}\n'
+                 )
+
+
+def main():
+    api_key = 'Ваш API ключ'
+    secret_key = 'Ваш секретный ключ'
+    passphrase = 'Ваш пароль'
+    flag = "0"
+
+    accountAPI = Account.AccountAPI(api_key, secret_key, passphrase, False, flag)
+    tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, False, flag)
+
+    while True:
+        try:
+            result = accountAPI.get_positions()
+            list_coins = [pos['instId'] for pos in result['data']]
+            logging.info(f'Active positions: {list_coins}')
+
+            for coin in ['LTC-USDT-SWAP.csv', 'OP-USDT-SWAP.csv']:
+                process_coin(coin, accountAPI, tradeAPI, list_coins)
+
+            sleep(60)
+        except Exception as e:
+            logging.error(f'Error in main loop: {e}')
+            send_message(f'Error: {e}')
+            sleep(60)
+
+
+if __name__ == "__main__":
+    main()
+
+
+
+
+
+
+
+
+
+#####
+# import pandas as pd
+# import numpy as np
+# from sklearn.model_selection import train_test_split
+# from sklearn.ensemble import RandomForestClassifier
+# from sklearn.metrics import accuracy_score
+# import logging
+#
+#
+# # Example: Adding a machine learning model to predict trades
+#
+# def create_features(df):
+#     df['ma5'] = df['close'].rolling(window=5).mean()
+#     df['ma10'] = df['close'].rolling(window=10).mean()
+#     df['rsi'] = calculate_rsi(df['close'])
+#     df['return'] = df['close'].pct_change()
+#     df['target'] = np.where(df['close'].shift(-1) > df['close'], 1, 0)  # 1 for up, 0 for down
+#     df = df.dropna()
+#     return df
+#
+#
+# def calculate_rsi(series, period=14):
+#     delta = series.diff(1)
+#     gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+#     loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+#     rs = gain / loss
+#     return 100 - (100 / (1 + rs))
+#
+#
+# def train_model(df):
+#     features = ['ma5', 'ma10', 'rsi', 'return']
+#     X = df[features]
+#     y = df['target']
+#     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+#
+#     model = RandomForestClassifier(n_estimators=100, random_state=42)
+#     model.fit(X_train, y_train)
+#
+#     y_pred = model.predict(X_test)
+#     accuracy = accuracy_score(y_test, y_pred)
+#     logging.info(f'Model Accuracy: {accuracy}')
+#
+#     return model
+#
+#
+# def make_prediction(model, df):
+#     features = ['ma5', 'ma10', 'rsi', 'return']
+#     X = df[features].iloc[-1].values.reshape(1, -1)
+#     prediction = model.predict(X)
+#     return prediction[0]
+#
+#
+# def process_coin(coin, accountAPI, tradeAPI, list_coins, model, risk=20, deliver=1):
+#     df = pd.read_csv(coin)
+#     df = create_features(df)
+#
+#     prediction = make_prediction(model, df)
+#
+#     if prediction == 1 and coin not in list_coins:
+#         handle_trade_signal(coin, df, 1, accountAPI, tradeAPI, risk, deliver)
+#     elif prediction == 0 and coin not in list_coins:
+#         handle_trade_signal(coin, df, 2, accountAPI, tradeAPI, risk, deliver)
+#
+#
+# def main():
+#     api_key = 'Your API key'
+#     secret_key = 'Your secret key'
+#     passphrase = 'Your passphrase'
+#     flag = "0"
+#
+#     accountAPI = Account.AccountAPI(api_key, secret_key, passphrase, False, flag)
+#     tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, False, flag)
+#
+#     # Training model with historical data
+#     df = pd.read_csv('historical_data.csv')  # Replace with your historical data file
+#     df = create_features(df)
+#     model = train_model(df)
+#
+#     while True:
+#         try:
+#             result = accountAPI.get_positions()
+#             list_coins = [pos['instId'] for pos in result['data']]
+#             logging.info(f'Active positions: {list_coins}')
+#
+#             for coin in ['LTC-USDT-SWAP.csv', 'OP-USDT-SWAP.csv']:
+#                 process_coin(coin, accountAPI, tradeAPI, list_coins, model)
+#
+#             sleep(60)
+#         except Exception as e:
+#             logging.error(f'Error in main loop: {e}')
+#             send_message(f'Error: {e}')
+#             sleep(60)
+#
+#
+# if __name__ == "__main__":
+#     main()
