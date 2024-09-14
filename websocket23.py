@@ -39,9 +39,9 @@ def websocket(coin, my_timeframe, num):
     marketDataAPI = MarketData.MarketAPI(flag=FLAG)
     csv_file_path = f"{coin}"
 
-    with open(csv_file_path, mode="a", newline='', encoding="utf-8") as file:
-        file_writer = csv.writer(file, delimiter=",")
-        file_writer.writerow(["timestamp", "open", "high", "low", "close"])
+    # with open(csv_file_path, mode="a", newline='', encoding="utf-8") as file:
+    #     file_writer = csv.writer(file, delimiter=",")
+    #     file_writer.writerow(["timestamp", "open", "high", "low", "close"])
 
     while True:
         try:
@@ -68,6 +68,6 @@ def websocket(coin, my_timeframe, num):
             send_telegram_message(f'Error in websocket connection for {coin}: {e}')
 
 # Запуск потоков для разных криптовалют
-coins = [("BTC-USDT-SWAP.csv", 5, 12), ("ETH-USDT-SWAP.csv", 5, 37)]
+coins = [("BTC-USDT-SWAP.csv", 5, 12), ("ETH-USDT-SWAP.csv", 5, 37), ("LTC-USDT-SWAP.csv", 5 , 10), ("OP-USDT-SWAP.csv", 5 , 48)]
 for coin, timeframe, num in coins:
     threading.Thread(target=websocket, args=(coin, timeframe, num)).start()

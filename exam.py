@@ -275,13 +275,22 @@ import logging
 from time import sleep
 import pandas as pd
 import numpy as np
+import numpy as np
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+import logging
+from time import sleep
+import pickle
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Telegram
-TOKEN = 'Ваш токен'
-chat_id = 'Ваш chat_id'
+TOKEN = '6959314930:AAHnekjhCc2d_CHFLxE9hFWAZuIgQMD8wzY'
+chat_id = '947159905'
+
 
 
 def send_message(text):
@@ -291,7 +300,7 @@ def send_message(text):
     except requests.RequestException as e:
         logging.error(f"Failed to send message: {e}")
 
-
+#Слом структуры________________________________________________________________
 def is_swing(candle, window, df):
     if candle - window < 0 or candle + window >= len(df):
         return 0
@@ -304,27 +313,131 @@ def pointpos(row):
     return row['low'] if row['isSwing'] == 2 else (row['high'] if row['isSwing'] == 1 else np.nan)
 
 
-def detect_structure(candle, df, backcandles=60, window=9):
+def detect_structure(candle, df, backcandles=60, window=10):
+    # Проверка, что индекс в пределах допустимого диапазона
+    if candle - backcandles - window < 0 or candle >= len(df):
+        return 0
+
+    # Выбор локального диапазона данных
     localdf = df.iloc[candle - backcandles - window:candle - window]
+    if localdf.empty:
+        return 0
+
+    # Проверка на боковик
+    high_range = localdf['high'].max() - localdf['high'].min()
+    low_range = localdf['low'].max() - localdf['low'].min()
+    zone_width = 0.001
+
+    if high_range < zone_width and low_range < zone_width:
+        # Если цена находится в боковике, возвращаем 0
+        return 0
+
+    # Проверка на максимумы и минимумы
     highs = localdf[localdf['isSwing'] == 1].high.tail(2).values
     lows = localdf[localdf['isSwing'] == 2].low.tail(2).values
-    zone_width = 0.001
+
+    if len(highs) < 2 or len(lows) < 2:
+        # Если недостаточно данных для определения структуры
+        return 0
+
+    # Проверка на слом структуры
     if len(highs) == 2 and df.loc[candle].close - highs.mean() > zone_width * 2:
-        return 1
+        return 1  # Сигнал на покупку (смотрим, что текущая цена выше средних максимумов)
+
     if len(lows) == 2 and lows.mean() - df.loc[candle].close > zone_width * 2:
-        return 2
-    return 0
+        return 2  # Сигнал на продажу (смотрим, что текущая цена ниже средних минимумов)
+
+    return 0  # Нет сигнала
+#___________________________________________________________________________
+
+#Машинное обучение
+global_model = None
+global_scaler = None
 
 
-def process_coin(coin, accountAPI, tradeAPI, list_coins, risk=20, deliver=1):
+# Функции для обучения и использования модели
+def extract_features(df):
+    df['return'] = df['close'].pct_change()
+    df['volatility'] = df['close'].rolling(window=10).std()
+    df['momentum'] = df['close'].rolling(window=5).mean() - df['close'].rolling(window=15).mean()
+    df.dropna(inplace=True)
+    return df
+
+def prepare_data(df):
+    df = extract_features(df)
+    if len(df) < 2:  # Проверка, что есть хотя бы 2 записи для обучения
+        logging.error(f"Insufficient data for training. Available samples: {len(df)}")
+        return None, None
+    X = df[['return', 'volatility', 'momentum']]
+    y = (df['close'].shift(-1) > df['close']).astype(int)
+    return X.dropna(), y.dropna()  # Убедитесь, что нет NaN значений
+
+def train_model(X, y):
+    if X is None or y is None or len(X) < 2:  # Проверка, что есть достаточно данных для обучения
+        logging.error("Not enough data to train the model.")
+        return None, None
+    try:
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
+        if len(X_train) == 0 or len(y_train) == 0:  # Проверка на пустые обучающие выборки
+            logging.error("Training set is empty after the split.")
+            return None, None
+        scaler = StandardScaler()
+        X_train_scaled = scaler.fit_transform(X_train)
+        X_test_scaled = scaler.transform(X_test)
+        model = LogisticRegression()
+        model.fit(X_train_scaled, y_train)
+        y_pred = model.predict(X_test_scaled)
+        accuracy = accuracy_score(y_test, y_pred)
+        logging.info(f"Model accuracy: {accuracy:.2f}")
+        return model, scaler
+    except ValueError as e:
+        logging.error(f"Error during model training: {e}")
+        return None, None
+
+def make_prediction(model, scaler, df):
+    df = extract_features(df)
+    if len(df) < 1:
+        logging.error("Insufficient data for prediction.")
+        return None
+    X_new = df[['return', 'volatility', 'momentum']].iloc[-1:].copy()
+    X_new_scaled = scaler.transform(X_new)
+    prediction = model.predict(X_new_scaled)
+    return prediction[0]
+
+def train_model_for_coin(coin):
+    global global_model, global_scaler
+    if global_model is not None and global_scaler is not None:
+        return global_model, global_scaler
+
+    historical_data = pd.read_csv(coin)
+    logging.info(f"Training model for {coin}. Total data points: {len(historical_data)}")
+    X, y = prepare_data(historical_data)
+    if X is not None and y is not None:
+        logging.info(f"Prepared data for {coin}. Data points after preparation: {len(X)}")
+        global_model, global_scaler = train_model(X, y)
+        if global_model and global_scaler:
+            logging.info(f'Model trained for {coin}')
+        else:
+            logging.error(f'Failed to train model for {coin}')
+    return global_model, global_scaler
+
+#_________________________________________________________________________
+
+def process_coin(coin, accountAPI, tradeAPI, list_coins, deliver, model, scaler, risk=4):
     df = pd.read_csv(coin)
     window = 10
     df['isSwing'] = df.apply(lambda x: is_swing(x.name, window, df), axis=1)
     df['pointpos'] = df.apply(pointpos, axis=1)
     df['pattern_detected'] = df.apply(lambda x: detect_structure(x.name, df), axis=1)
 
+    ml_signal = make_prediction(model, scaler, df)
+    print(f'Ml_signal: {ml_signal}')
     latest_pattern = df["pattern_detected"].iloc[-1]
-    if latest_pattern in [1, 2] and coin not in list_coins:
+    print(f'Latest_pattern: {latest_pattern}')
+    coin = coin[:-4]
+    if latest_pattern==1 and ml_signal==1 and coin not in list_coins:
+        handle_trade_signal(coin, df, latest_pattern, accountAPI, tradeAPI, risk, deliver)
+    if latest_pattern==2 and ml_signal==2 and coin not in list_coins:
         handle_trade_signal(coin, df, latest_pattern, accountAPI, tradeAPI, risk, deliver)
 
 
@@ -334,10 +447,9 @@ def handle_trade_signal(coin, df, pattern, accountAPI, tradeAPI, risk, deliver):
     high = rslt_df_high['pointpos'].iloc[-1]
     low = rslt_df_low['pointpos'].iloc[-1]
     close = df['close'].iloc[-1]
-
     stop = low * 0.9996 if pattern == 1 else high * 1.0004
     take = ((close - stop) * 3) + close if pattern == 1 else close - ((stop - close) * 3)
-    percent_sz = round(((risk / ((close - stop) / stop)) * deliver) / close, 1)
+    percent_sz = round(((risk / ((close - stop) / stop)) * deliver) / close, 1) if pattern == 1 else round(((risk / ((high - close) / high)) * deliver) / close, 1)
 
     side = "buy" if pattern == 1 else "sell"
     pos_side = "long" if pattern == 1 else "short"
@@ -371,22 +483,34 @@ def handle_trade_signal(coin, df, pattern, accountAPI, tradeAPI, risk, deliver):
 
 
 def main():
-    api_key = 'Ваш API ключ'
-    secret_key = 'Ваш секретный ключ'
-    passphrase = 'Ваш пароль'
-    flag = "0"
-
+    # Demo
+    api_key = '43f5df59-5e61-4d24-875e-f32c003e0430'
+    secret_key = '5B1063B322635A27CF01BACE3772E0E0'
+    passphrase = 'Parkwood270298)'
+    flag = "1"
+    # REAL
+    # api_key = 'f8bcadcc-bed3-4fca-96e7-4f314f43136b'
+    # secret_key = 'F56CF3942B876FDEDEF547C90B04F206'
+    # passphrase = 'Parkwood270298)'
+    # flag = "0"
     accountAPI = Account.AccountAPI(api_key, secret_key, passphrase, False, flag)
     tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, False, flag)
+    train_model_for_coin('LTC-USDT-SWAP.csv')
+    # train_model_for_coin('BTC-USDT-SWAP.csv')
 
     while True:
+
         try:
             result = accountAPI.get_positions()
             list_coins = [pos['instId'] for pos in result['data']]
             logging.info(f'Active positions: {list_coins}')
-
-            for coin in ['LTC-USDT-SWAP.csv', 'OP-USDT-SWAP.csv']:
-                process_coin(coin, accountAPI, tradeAPI, list_coins)
+            for coin in ['LTC-USDT-SWAP.csv']: #, 'BTC-USDT-SWAP.csv'
+                model, scaler = train_model_for_coin(coin)
+                if coin=='LTC-USDT-SWAP.csv':
+                    deliver=1000
+                # elif coin=='BTC-USDT-SWAP.csv':
+                #     deliver=1000
+                process_coin(coin, accountAPI, tradeAPI, list_coins, deliver, model, scaler)
 
             sleep(60)
         except Exception as e:

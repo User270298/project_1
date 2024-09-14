@@ -20,7 +20,7 @@ exchange = ccxt.okx()
 # df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
 # df.to_csv('BTC-USDT-SWAP.csv', index=False)
 
-df = pd.read_csv("BTC-USDT-SWAP.csv")
+df = pd.read_csv("LTC-USDT-SWAP.csv")
 # df=df[df['volum']!=0]
 df=df[0:1000]
 # print(len(df))

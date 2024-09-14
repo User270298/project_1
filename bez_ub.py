@@ -94,7 +94,7 @@ def update_stop_and_take_profit(coin, tradeAPI, order_id, entry_price, take_prof
         send_message(f"{coin}: Price reached 2/3 TP, 50% profit taken.")
 
 
-def process_coin(coin, accountAPI, tradeAPI, list_coins, risk=20, deliver=1):
+def process_coin(coin, accountAPI, tradeAPI, list_coins, deliver, risk=20):
     df = pd.read_csv(coin)
     window = 10
     df['isSwing'] = df.apply(lambda x: is_swing(x.name, window, df), axis=1)
@@ -122,7 +122,7 @@ def handle_trade_signal(coin, df, pattern, accountAPI, tradeAPI, risk, deliver):
 
     stop = low * 0.9996 if pattern == 1 else high * 1.0004
     take = ((close - stop) * 3) + close if pattern == 1 else close - ((stop - close) * 3)
-    percent_sz = round(((risk / ((close - stop) / stop)) * deliver) / close, 1)
+    percent_sz = round(((risk / ((close - stop) / stop)) * deliver) / close, 1) if pattern == 1 else round(((risk / ((stop - close) / close)) * deliver) / close, 1)
 
     side = "buy" if pattern == 1 else "sell"
     pos_side = "long" if pattern == 1 else "short"
@@ -156,10 +156,16 @@ def handle_trade_signal(coin, df, pattern, accountAPI, tradeAPI, risk, deliver):
 
 
 def main():
-    api_key = 'Ваш API ключ'
-    secret_key = 'Ваш секретный ключ'
-    passphrase = 'Ваш пароль'
-    flag = "0"
+    # Demo
+    api_key = '43f5df59-5e61-4d24-875e-f32c003e0430'
+    secret_key = '5B1063B322635A27CF01BACE3772E0E0'
+    passphrase = 'Parkwood270298)'
+    flag = "1"
+    # REAL
+    # api_key = 'f8bcadcc-bed3-4fca-96e7-4f314f43136b'
+    # secret_key = 'F56CF3942B876FDEDEF547C90B04F206'
+    # passphrase = 'Parkwood270298)'
+    # flag = "0"
 
     accountAPI = Account.AccountAPI(api_key, secret_key, passphrase, False, flag)
     tradeAPI = trade.TradeAPI(api_key, secret_key, passphrase, False, flag)
@@ -171,8 +177,11 @@ def main():
             logging.info(f'Active positions: {list_coins}')
 
             for coin in ['LTC-USDT-SWAP.csv', 'OP-USDT-SWAP.csv']:
-
-                process_coin(coin, accountAPI, tradeAPI, list_coins)
+                if 'BTC-USDT-SWAP.csv':
+                    deliver=1000
+                elif 'ETH-USDT-SWAP.csv':
+                    deliver=100
+                process_coin(coin, accountAPI, tradeAPI, list_coins, deliver)
 
             sleep(60)
         except Exception as e:

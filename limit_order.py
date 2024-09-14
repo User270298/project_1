@@ -70,8 +70,12 @@ def place_limit_order(coin, tradeAPI, high, low, percent_sz, order_id, position_
         ordType="limit",
         sz=percent_sz,
         px=limit_price,
-        sl=stop_loss,  # Добавление стоп-лосса
-        tp=take_profit,  # Добавление тейк-профита
+        tpTriggerPx=float(take_profit),
+        tpOrdPx="-1",
+        tpTriggerPxType="last",
+        slTriggerPx=float(stop_loss),
+        slOrdPx="-1",
+        slTriggerPxType="last",
         clOrdId=order_id
     )
 
@@ -91,7 +95,7 @@ def cancel_order_if_far(coin, tradeAPI, current_price, limit_price, tolerance, o
     return False
 
 
-def process_coin(coin, accountAPI, tradeAPI, list_coins, risk=5, deliver=1, tolerance=0.002):
+def process_coin(coin, accountAPI, tradeAPI, list_coins, risk=10, deliver=1, tolerance=0.002):
     df = pd.read_csv(coin)
     window = 10
     df['isSwing'] = df.apply(lambda x: is_swing(x.name, window, df), axis=1)
@@ -158,7 +162,11 @@ def main():
             list_coins = [pos['instId'] for pos in result['data']]
             logging.info(f'Active positions: {list_coins}')
 
-            for coin in ['LTC-USDT-SWAP.csv', 'OP-USDT-SWAP.csv']:
+            for coin in ['BTC-USDT-SWAP.csv', 'ETH-USDT-SWAP.csv']:
+                if 'BTC-USDT-SWAP.csv':
+                    deliver=1000
+                elif 'ETH-USDT-SWAP.csv':
+                    deliver=100
                 process_coin(coin, accountAPI, tradeAPI, list_coins)
 
             sleep(60)
